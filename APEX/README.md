@@ -1,1 +1,1 @@
-Trandigview Scripts for APEX
+Trandingview Scripts for APEX
