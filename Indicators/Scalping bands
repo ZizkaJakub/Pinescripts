@@ -1,0 +1,192 @@
+//@version=3
+study("Scalping Bands by PuppyTherapy", overlay = true)
+src                     = input(close, type=source)
+
+sp_ma                   = input(false, title="⎻⎻⎻⎻⎻⎻ MA Base Setting  ⎻⎻⎻⎻⎻⎻⎻")
+ma_length               = input(34,    minval=1, title="MA length")
+ma_type                 = input("KAMA", title="MA", options=["SMA", "EMA", "WMA", "DEMA", "TEMA", "TRIMA", "KAMA", "MAMA", "T3"], type=string)
+emaribbon               = input(true, title="EMA Ribbon (ON/OFF)" )
+
+kc_main                 = input(false, title="⎻⎻⎻ CHANNELS  ⎻⎻⎻")
+kc_Width_1_space        = input(0.85,   minval=0, type = float,  title="Space Width% 1")
+kc_Width_1              = input(0.25,   minval=0, type = float,  title="Color Width% 1")
+kc_Width_2_space        = input(0.75,   minval=0, type = float,  title="Space Width% 2")
+kc_Width_2              = input(0.25,   minval=0, type = float,  title="Color Width% 2")
+kc_Width_3_space        = input(0.85,   minval=0, type = float,  title="Space Width% 3")
+kc_Width_3              = input(0.85,   minval=0, type = float,  title="Color Width% 3")
+
+atr_type                = input("KAMA", title="ATR Smoothing MA", options=["SMA", "EMA", "WMA", "DEMA", "TEMA", "TRIMA", "KAMA", "MAMA", "T3"], type=string)
+atr_length              = input(88,   minval=1, title="ATR Smoothing Length")
+
+ema_main                = input(false, title="⎻⎻⎻ EMA RIBBON  ⎻⎻⎻")
+emaLength1              = input(21,   minval=0,  type = integer, title="EMA Length 1")
+emaLength2              = input(34,   minval=0,  type = integer, title="EMA Length 2")
+emaLength3              = input(55,   minval=0,  type = integer, title="EMA Length 3")
+emaLength4              = input(88,   minval=0,  type = integer, title="EMA Length 4")
+emaLength5              = input(144,  minval=0,  type = integer, title="EMA Length 5")
+emaLength6              = input(200,  minval=0,  type = integer, title="EMA Length 6")
+maUseDifferentRes       = input(false, title="Use Different Resolution?")
+maReso                  = input(title="Different Timeframe? Check Box Above", type=resolution, defval="15")
+
+kama(src, len)=>
+    xvnoise = abs(src - src[1])
+    nfastend = 0.666
+    nslowend = 0.0645
+    nsignal = abs(src - src[len])
+    nnoise = sum(xvnoise, len)
+    nefratio = iff(nnoise != 0, nsignal / nnoise, 0)
+    nsmooth = pow(nefratio * (nfastend - nslowend) + nslowend, 2)
+    nAMA = 0.0
+    nAMA := nz(nAMA[1]) + nsmooth * (src - nz(nAMA[1]))
+
+mama(src, len)=>
+    fl=0.5
+    sl=0.05
+    pi = 3.1415926
+    sp = (4*src + 3*src[1] + 2*src[2] + src[3]) / 10.0
+    p  = 0.0
+    i2 = 0.0
+    q2 = 0.0
+    dt = (.0962*sp + .5769*nz(sp[2]) - .5769*nz(sp[4])- .0962*nz(sp[6]))*(.075*nz(p[1]) + .54)
+    q1 = (.0962*dt + .5769*nz(dt[2]) - .5769*nz(dt[4])- .0962*nz(dt[6]))*(.075*nz(p[1]) + .54)
+    i1 = nz(dt[3])
+    jI = (.0962*i1 + .5769*nz(i1[2]) - .5769*nz(i1[4])- .0962*nz(i1[6]))*(.075*nz(p[1]) + .54)
+    jq = (.0962*q1 + .5769*nz(q1[2]) - .5769*nz(q1[4])- .0962*nz(q1[6]))*(.075*nz(p[1]) + .54)
+    i2_ = i1 - jq
+    q2_ = q1 + jI
+    i2 := .2*i2_ + .8*nz(i2[1])
+    q2 := .2*q2_ + .8*nz(q2[1])
+    re_ = i2*nz(i2[1]) + q2*nz(q2[1])
+    im_ = i2*nz(q2[1]) - q2*nz(i2[1])
+    re = 0.0
+    im = 0.0
+    re := .2*re_ + .8*nz(re[1])
+    im := .2*im_ + .8*nz(im[1])
+    p1 = iff(im!=0 and re!=0, 2*pi/atan(im/re), nz(p[1]))
+    p2 = iff(p1 > 1.5*nz(p1[1]), 1.5*nz(p1[1]), iff(p1 < 0.67*nz(p1[1]), 0.67*nz(p1[1]), p1))
+    p3 = iff(p2<6, 6, iff (p2 > 50, 50, p2))
+    p := .2*p3 + .8*nz(p3[1])
+    spp  = 0.0
+    spp := .33*p + .67*nz(spp[1])
+    phase = 180/pi * atan(q1 / i1)
+    dphase_ = nz(phase[1]) - phase
+    dphase = iff(dphase_< 1, 1, dphase_)
+    alpha_ = fl / dphase
+    alpha = iff(alpha_ < sl, sl, iff(alpha_ > fl, fl, alpha_))
+    mama = 0.0
+    mama := alpha*src + (1 - alpha)*nz(mama[1])
+
+t3(src, len)=>
+    xe1_1 = ema(src,    len)
+    xe2_1 = ema(xe1_1,  len)
+    xe3_1 = ema(xe2_1,  len)
+    xe4_1 = ema(xe3_1,  len)
+    xe5_1 = ema(xe4_1,  len)
+    xe6_1 = ema(xe5_1,  len)
+    b_1 = 0.7
+    c1_1 = -b_1*b_1*b_1
+    c2_1 = 3*b_1*b_1+3*b_1*b_1*b_1
+    c3_1 = -6*b_1*b_1-3*b_1-3*b_1*b_1*b_1
+    c4_1 = 1+3*b_1+b_1*b_1*b_1+3*b_1*b_1
+    nT3Average_1 = c1_1 * xe6_1 + c2_1 * xe5_1 + c3_1 * xe4_1 + c4_1 * xe3_1
+
+variant(type, src, len) =>
+    v1 = sma(src, len)                                                  // Simple
+    v2 = ema(src, len)                                                  // Exponential
+    v3 = 2 * v2 - ema(v2, len)                                          // Double Exponential
+    v4 = 3 * (v2 - ema(v2, len)) + ema(ema(v2, len), len)               // Triple Exponential
+    v5 = wma(src, len)                                                  // Weighted
+    v6 = sma(sma(src, ceil(len / 2)), floor(len / 2) + 1)               // TRIMA
+    v7 = kama(src, len)                                                 // KAMA
+    v8 = mama(src, len)                                                 // MAMA
+    v9 = t3(src, len)                                                   // T3
+    type=="EMA"?v2 : type=="DEMA"?v3 : type=="TEMA"?v4 : type=="WMA"?v5 : type=="TRIMA"?v6 : type=="KAMA"?v7 : type=="MAMA"?v8 : type=="T3"?v9 : v1
+
+// *********** EMA Ribbon +  ************
+//Different resolution function    
+reso(exp, res, use) => use ? security(tickerid, res, exp) : exp    
+
+// -- Global Functions  
+ma1 = reso(ema(src, emaLength1), maReso, maUseDifferentRes)
+ma2 = reso(ema(src, emaLength2), maReso, maUseDifferentRes)
+ma3 = reso(ema(src, emaLength3), maReso, maUseDifferentRes)
+ma4 = reso(ema(src, emaLength4), maReso, maUseDifferentRes)
+ma5 = reso(ema(src, emaLength5), maReso, maUseDifferentRes)
+ma6 = reso(ema(src, emaLength5), maReso, maUseDifferentRes)
+
+plotma1 = plot(emaribbon?ma1:na, color=#5EBD3E, tranps=80, linewidth = 1, title = "MA1" )
+plotma2 = plot(emaribbon?ma2:na, color=#FFB900, tranps=80, linewidth = 1, title = "MA2" )
+plotma3 = plot(emaribbon?ma3:na, color=#F78200, tranps=80, linewidth = 1, title = "MA3" )
+plotma4 = plot(emaribbon?ma4:na, color=#E23838, tranps=80, linewidth = 1, title = "MA4" )
+plotma5 = plot(emaribbon?ma5:na, color=#972999, tranps=80, linewidth = 1, title = "MA5" )
+plotma6 = plot(emaribbon?ma6:na, color=#531654, tranps=80, linewidth = 1, title = "MA6" )
+
+buy  = ma1 > ma2 and ma1 > ma3 and ma1 > ma4 and ma1 > ma5 and ma1 > ma6 and ma4 > ma4[1] and ma5 > ma5[1] and ma6 > ma6[1]
+sell = ma1 < ma2 and ma1 < ma3 and ma1 < ma4 and ma1 < ma5 and ma1 < ma6 and ma4 < ma4[1] and ma5 < ma5[1] and ma6 < ma6[1] 
+
+macolor = yellow
+if buy
+    macolor := lime
+if sell
+    macolor := red
+
+//MA Base Calculation 
+maBasis     = variant(ma_type, src, ma_length)
+maRange     = variant(atr_type, tr , atr_length)
+
+ma_base = plot(maBasis,  color=macolor, linewidth=1, title = "MA BASE")
+
+kc_lower_1_sp    = maBasis       - maRange * kc_Width_1_space
+kc_lower_1       = kc_lower_1_sp - maRange * kc_Width_1
+kc_lower_2_sp    = kc_lower_1    - maRange * kc_Width_2_space
+kc_lower_2       = kc_lower_2_sp - maRange * kc_Width_2
+kc_lower_3_sp    = kc_lower_2    - maRange * kc_Width_3_space
+kc_lower_3       = kc_lower_3_sp - maRange * kc_Width_3
+
+kc_upper_1_sp    = maBasis       + maRange * kc_Width_1_space
+kc_upper_1       = kc_upper_1_sp + maRange * kc_Width_1
+kc_upper_2_sp    = kc_upper_1    + maRange * kc_Width_2_space
+kc_upper_2       = kc_upper_2_sp + maRange * kc_Width_2
+kc_upper_3_sp    = kc_upper_2    + maRange * kc_Width_3_space
+kc_upper_3       = kc_upper_3_sp + maRange * kc_Width_3
+
+// --- 1 ---
+kc_low_1_sp  = plot(kc_lower_1_sp, color=orange, transp = 100, title = "LOW SPACE 1")
+kc_high_1_sp = plot(kc_upper_1_sp, color=orange, transp = 100, title = "UP SPACE 1")
+
+fill(kc_low_1_sp ,  kc_high_1_sp,  color = orange, transp = 100, title = "FILL SPACE 1")
+
+kc_low_1     = plot(kc_lower_1, color=orange, transp = 90, title = "LOW COLOR 1")
+kc_high_1    = plot(kc_upper_1, color=orange, transp = 90, title = "UP COLOR 1")
+
+fill(kc_low_1,  kc_low_1_sp,  color = orange, transp = 90, title = "FILL COLOR LOW 1")
+fill(kc_high_1, kc_high_1_sp, color = orange, transp = 90, title = "FILL COLOR UP 1")
+
+// --- 2 ---
+kc_low_2_sp  = plot(kc_lower_2_sp, color=lime, transp = 100, title = "LOW SPACE 2")
+kc_high_2_sp = plot(kc_upper_2_sp, color=#F78200, transp = 100, title = "UP SPACE 2")
+
+fill(kc_low_1,  kc_low_2_sp,  color = #F78200, transp = 100, title = "FILL SPACE LOW 2")
+fill(kc_high_1, kc_high_2_sp, color = #F78200, transp = 100, title = "FILL SPACE UP 2")
+
+kc_low_2     = plot(kc_lower_2, color=lime,    transp = 95, title = "LOW COLOR 2")
+kc_high_2    = plot(kc_upper_2, color=red,     transp = 95, title = "UP COLOR 2")
+
+fill(kc_low_2,  kc_low_2_sp,  color = lime, transp = 95, title = "FILL COLOR LOW 2")
+fill(kc_high_2, kc_high_2_sp, color = red, transp = 95, title = "FILL COLOR UP 2")
+
+// --- 3 ---
+kc_low_3_sp  = plot(kc_lower_3_sp, color=#E23838, transp = 100, title = "LOW SPACE 3")
+kc_high_3_sp = plot(kc_upper_3_sp, color=#E23838, transp = 100, title = "UP SPACE 3")
+
+fill(kc_low_2,  kc_low_3_sp,  color = #E23838, transp = 100, title = "FILL SPACE LOW 3")
+fill(kc_high_2, kc_high_3_sp, color = #E23838, transp = 100, title = "FILL SPACE UP 3")
+
+kc_low_3     = plot(kc_lower_3, color=lime,    transp = 85, title = "LOW COLOR 3")
+kc_high_3    = plot(kc_upper_3, color=red,    transp = 85, title = "UP COLOR 3")
+
+fill(kc_low_3,  kc_low_3_sp,  color = lime, transp = 85, title = "FILL COLOR LOW 3")
+fill(kc_high_3, kc_high_3_sp, color = red, transp = 85, title = "FILL COLOR UP 3")
+
+
+
