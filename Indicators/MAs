@@ -1,0 +1,118 @@
+//@version=3
+study("Moving Averages - Cross / Trend ", overlay=true)
+spgl         = input("----", title="--------Global Settings----------", options=["----"])
+maUseRes    = input(defval = false, title = "Use Different Resolution?")
+maReso      = input(defval = "60", title = "Set Resolution", type = resolution)
+
+sp0         = input("----", title="--------Moving Average 0----------", options=["----"])
+maType0     = input("EMA", title="MA", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "Hull", "TRIMA", "KAMA", "T3"], type=string)
+maSource0   = input("C", title="Source", options=["O", "H", "L", "C", "HL2", "OO2", "OH2", "OL2", "OC2", "HH2", "HC2", "LL2", "LC2", "HLC3", "OHLC4", "WC2", "WC4", "VWAP"], type=string)
+maLength0   = input(defval = 21, title = "Period", minval = 1)
+
+sp1         = input("----", title="--------Moving Average 1----------", options=["----"])
+maType1     = input("EMA", title="MA", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "Hull", "TRIMA", "KAMA", "T3"], type=string)
+maSource1   = input("C", title="Source", options=["O", "H", "L", "C", "HL2", "OO2", "OH2", "OL2", "OC2", "HH2", "HC2", "LL2", "LC2", "HLC3", "OHLC4", "WC2", "WC4", "VWAP"], type=string)
+maLength1   = input(defval = 34, title = "Period", minval = 1)
+
+sp2         = input("----", title="--------Moving Average 2----------", options=["----"])
+maType2     = input("EMA", title="MA", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "Hull", "TRIMA", "KAMA", "T3"], type=string)
+maSource2   = input("C", title="Source", options=["O", "H", "L", "C", "HL2", "OO2", "OH2", "OL2", "OC2", "HH2", "HC2", "LL2", "LC2", "HLC3", "OHLC4", "WC2", "WC4", "VWAP"], type=string)
+maLength2   = input(defval = 55, title = "Period", minval = 1)
+
+sp3         = input("----", title="--------Moving Average 3----------", options=["----"])
+maType3     = input("EMA", title="MA", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "Hull", "TRIMA", "KAMA", "T3"], type=string)
+maSource3   = input("C", title="Source", options=["O", "H", "L", "C", "HL2", "OO2", "OH2", "OL2", "OC2", "HH2", "HC2", "LL2", "LC2", "HLC3", "OHLC4", "WC2", "WC4", "VWAP"], type=string)
+maLength3   = input(defval = 88, title = "Period", minval = 1)
+
+sp4         = input("----", title="--------Moving Average 4----------", options=["----"])
+maType4     = input("EMA", title="MA", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "Hull", "TRIMA", "KAMA", "T3"], type=string)
+maSource4   = input("C", title="Source", options=["O", "H", "L", "C", "HL2", "OO2", "OH2", "OL2", "OC2", "HH2", "HC2", "LL2", "LC2", "HLC3", "OHLC4", "WC2", "WC4", "VWAP"], type=string)
+maLength4   = input(defval = 144, title = "Period", minval = 1)
+
+sp5         = input("----", title="--------Moving Average 5----------", options=["----"])
+maType5     = input("EMA", title="MA", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "Hull", "TRIMA", "KAMA", "T3"], type=string)
+maSource5   = input("C", title="Source", options=["O", "H", "L", "C", "HL2", "OO2", "OH2", "OL2", "OC2", "HH2", "HC2", "LL2", "LC2", "HLC3", "OHLC4", "WC2", "WC4", "VWAP"], type=string)
+maLength5   = input(defval = 200, title = "Period", minval = 1)
+
+getSource( type )=>
+    oo2 = (open + open[1]) / 2
+    oh  = (open + high) / 2 
+    ol2 = (open + low) / 2 
+    oc2 = (open + close) / 2
+    hh2 = (high + high[1]) / 2
+    hc2 = (high + close) / 2 
+    ll2 = (low + low[1]) / 2 
+    lc2 = (low + close) / 2 
+    cc2 = (close + close[1]) / 2 
+    wc2 = (2 * close + high + low) / 4 
+    wc4 = (4 * close + high + low) / 6 
+    type=="O"?open : type=="C"?close : type=="H"?high : type=="L"?low : type=="HL2"?hl2 : type=="OO2"?oo2 : type=="OH2"?oh : type=="OL2"?ol2 : type=="OC2"?oc2 : type=="HH2"?hh2 : type=="HC2"?hc2 : type=="LL2"?ll2 : type=="LC2"?lc2 : type=="CC2"?cc2 : type=="HLC3"?hlc3 : type=="OHLC4"?ohlc4  : type=="WC2"?wc2  : type=="WC4"?wc4  : type=="VWAP"?vwap : close
+
+kama(src, len)=>
+    xvnoise = abs(src - src[1])
+    nfastend = 0.666
+    nslowend = 0.0645
+    nsignal = abs(src - src[len])
+    nnoise = sum(xvnoise, len)
+    nefratio = iff(nnoise != 0, nsignal / nnoise, 0)
+    nsmooth = pow(nefratio * (nfastend - nslowend) + nslowend, 2)
+    nAMA = 0.0
+    nAMA := nz(nAMA[1]) + nsmooth * (src - nz(nAMA[1]))
+
+t3(src, len)=>
+    xe1_1 = ema(src,    len)
+    xe2_1 = ema(xe1_1,  len)
+    xe3_1 = ema(xe2_1,  len)
+    xe4_1 = ema(xe3_1,  len)
+    xe5_1 = ema(xe4_1,  len)
+    xe6_1 = ema(xe5_1,  len)
+    b_1 = 0.7
+    c1_1 = -b_1*b_1*b_1
+    c2_1 = 3*b_1*b_1+3*b_1*b_1*b_1
+    c3_1 = -6*b_1*b_1-3*b_1-3*b_1*b_1*b_1
+    c4_1 = 1+3*b_1+b_1*b_1*b_1+3*b_1*b_1
+    nT3Average_1 = c1_1 * xe6_1 + c2_1 * xe5_1 + c3_1 * xe4_1 + c4_1 * xe3_1
+
+//Function from @JayRogers thank you man awesome work
+variant(type, src, len) =>
+    v1 = sma(src, len)                                                  // Simple
+    v2 = ema(src, len)                                                  // Exponential
+    v3 = 2 * v2 - ema(v2, len)                                          // Double Exponential
+    v4 = 3 * (v2 - ema(v2, len)) + ema(ema(v2, len), len)               // Triple Exponential
+    v5 = wma(src, len)                                                  // Weighted
+    v6 = vwma(src, len)                                                 // Volume Weighted
+    v7 = na(v5[1]) ? sma(src, len) : (v5[1] * (len - 1) + src) / len    // Smoothed
+    v8 = wma(2 * wma(src, len / 2) - wma(src, len), round(sqrt(len)))   // Hull
+    v9 = sma(sma(src, ceil(len / 2)), floor(len / 2) + 1)              // TRIMA
+    v10 = kama(src, len)                                                // KAMA
+    v11 = t3(src, len)                                                  // T3
+    type=="EMA"?v2 : type=="DEMA"?v3 : type=="TEMA"?v4 : type=="WMA"?v5 : type=="VWMA"?v6 : type=="SMMA"?v7 : type=="Hull"?v8 : type=="TRIMA"?v9 : type=="KAMA"?v10 : type=="T3"?v11 : v1
+    
+//Different resolution function    
+reso(exp, res, use) => use ? security(tickerid, res, exp) : exp    
+
+// -- Global Functions  
+ma0 = reso(variant( maType0, getSource( maSource0 ), maLength0 ), maReso, maUseRes)
+ma1 = reso(variant( maType1, getSource( maSource1 ), maLength1 ), maReso, maUseRes)
+ma2 = reso(variant( maType2, getSource( maSource2 ), maLength2 ), maReso, maUseRes)
+ma3 = reso(variant( maType3, getSource( maSource3 ), maLength3 ), maReso, maUseRes)
+ma4 = reso(variant( maType4, getSource( maSource4 ), maLength4 ), maReso, maUseRes)
+ma5 = reso(variant( maType5, getSource( maSource5 ), maLength5 ), maReso, maUseRes)
+
+plotma0 = plot(ma0, color=#5EBD3E, tranps=80, linewidth = 1, title = "MA0" )
+plotma1 = plot(ma1, color=#FFB900, tranps=80, linewidth = 1, title = "MA1" )
+plotma2 = plot(ma2, color=#F78200, tranps=80, linewidth = 1, title = "MA2" )
+plotma3 = plot(ma3, color=#E23838, tranps=80, linewidth = 1, title = "MA3" )
+plotma4 = plot(ma4, color=#972999, tranps=80, linewidth = 1, title = "MA4" )
+
+buy = ( ma1 > ma2 and ma1 > ma3 and ma1 > ma4 and ma1 > ma5 and ma4 > ma4[1] and ma5 > ma5[1] ) or
+ ( ma0 > ma0[1] and ma1 > ma1[1] and ma2 > ma2[1] and ma3 > ma3[1] and ma4 > ma4[1] and ma5 > ma5[1] and ma1 > ma2 and ma1 > ma3 and ma1 > ma4 )
+sell = ( ma1 < ma2 and ma1 < ma3 and ma1 < ma4 and ma1 < ma5 and ma4 < ma4[1] and ma5 < ma5[1] ) or
+ ( ma0 < ma0[1] and ma1 < ma1[1] and ma2 < ma2[1] and ma3 < ma3[1] and ma4 < ma4[1] and ma5 < ma5[1] and ma1 < ma2 and ma1 < ma3 and ma1 < ma4 )
+macolor = yellow
+if buy
+    macolor := lime
+if sell
+    macolor := red
+
+plotma5 = plot(ma5, color=macolor, tranps=80, linewidth = 3, style=circles , title = "MA5" )
